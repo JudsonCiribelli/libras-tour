@@ -1,0 +1,9 @@
+
+opencv-python
+numpy
+tensorflow
+scikit-learn
+matplotlib
+tkinter  # Ou PyQt5
+h5py
+flask  # Opcional, caso precise de API
