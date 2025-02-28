@@ -1,48 +1,44 @@
 import sys
 import os
 import json
-# Adiciona o diretório raiz (PDI) ao sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from utils.preprocess import carregar_imagens, dividir_dataset
-import tensorflow as tf
-from tensorflow import keras
-Sequential = keras.models.Sequential
-import tensorflow as tf
-MaxPooling2D = tf.keras.layers.MaxPooling2D
-from tensorflow import keras
-Dense = keras.layers.Dense
-Conv2D = keras.layers.Conv2D 
-Flatten = keras.layers.Flatten
-Dropout = keras.layers.Dropout
-import tensorflow as tf
-to_categorical = tf.keras.utils.to_categorical
-from utils.preprocess import carregar_imagens, dividir_dataset
 import numpy as np
 import tensorflow as tf
-ModelCheckpoint = tf.keras.callbacks.ModelCheckpoint
-EarlyStopping = tf.keras.callbacks.EarlyStopping
-
-
-# Adiciona o diretório raiz (PDI) ao sys.path
+import matplotlib.pyplot as plt
+from tensorflow import keras
+from tensorflow.keras.callbacks import ReduceLROnPlateau
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.preprocess import carregar_imagens, dividir_dataset
 
+# Definições de camadas da CNN
 Sequential = keras.models.Sequential
 MaxPooling2D = tf.keras.layers.MaxPooling2D
-Dense = keras.layers.Dense
-Conv2D = keras.layers.Conv2D 
-Flatten = keras.layers.Flatten
-Dropout = keras.layers.Dropout
+Dense = tf.keras.layers.Dense
+Conv2D = tf.keras.layers.Conv2D
+Flatten = tf.keras.layers.Flatten
+Dropout = tf.keras.layers.Dropout
+BatchNormalization = tf.keras.layers.BatchNormalization
 to_categorical = tf.keras.utils.to_categorical
 ModelCheckpoint = tf.keras.callbacks.ModelCheckpoint
 EarlyStopping = tf.keras.callbacks.EarlyStopping
+
+# Criar objeto de Data Augmentation com ajustes aprimorados
+data_augmentation = ImageDataGenerator(
+    rotation_range=40,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    fill_mode="nearest"
+)
 
 # Diretório do dataset
 diretorio_dataset = "DataSet/Turismo/"
 imagens, labels = carregar_imagens(diretorio_dataset)
 
 # Normalizar pixels (0 a 1)
-imagens = imagens / 255.0
+imagens = imagens.astype('float32') / 255.0
 
 # Transformar labels em categorias (one-hot encoding)
 unique_labels = sorted(set(labels))
@@ -59,25 +55,30 @@ with open("mapeamento_classes.json", "w") as f:
 
 print("Mapeamento de classes salvo em 'mapeamento_classes.json'")
 
+# Verificar o mapeamento das classes
+with open("mapeamento_classes.json", "r") as f:
+    mapeamento = json.load(f)
+print("Mapeamento de Classes:", mapeamento)
+
 # Dividir dataset
 X_treino, X_val, X_teste, y_treino, y_val, y_teste = dividir_dataset(imagens, labels)
 
-# Criar modelo CNN otimizado
+# Criar modelo CNN otimizado com Transfer Learning
 def criar_modelo(input_shape, num_classes):
+    base_model = tf.keras.applications.VGG16(weights='imagenet', include_top=False, input_shape=input_shape)
+    base_model.trainable = False  # Congelar os pesos do modelo base
+    
     modelo = Sequential([
-        Conv2D(32, (3, 3), activation='relu', input_shape=input_shape),
-        MaxPooling2D((2, 2)),
-        Conv2D(64, (3, 3), activation='relu'),
-        MaxPooling2D((2, 2)),
-        Conv2D(128, (3, 3), activation='relu'),
-        MaxPooling2D((2, 2)),
+        base_model,
         Flatten(),
-        Dense(128, activation='relu'),
+        Dense(512, activation='relu'),
         Dropout(0.5),
         Dense(num_classes, activation='softmax')
     ])
     
-    modelo.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)  # Aprimorando taxa de aprendizado
+    modelo.compile(optimizer=optimizer, loss="categorical_crossentropy", metrics=["accuracy"])
+    
     return modelo
 
 modelo = criar_modelo(X_treino.shape[1:], len(unique_labels))
@@ -90,21 +91,27 @@ checkpoint = ModelCheckpoint(
     verbose=1
 )
 
+reduce_lr = ReduceLROnPlateau(
+    monitor="val_loss",
+    factor=0.5,
+    patience=3,
+    min_lr=1e-6,
+    verbose=1
+)
+
 early_stopping = EarlyStopping(
-    monitor="val_accuracy",
+    monitor="val_loss",
     patience=5,
     verbose=1,
     restore_best_weights=True
 )
 
-# Treinar o modelo
+# Treinar o modelo usando data augmentation
 modelo.fit(
-    X_treino,
-    y_treino,
+    data_augmentation.flow(X_treino, y_treino, batch_size=32),
     validation_data=(X_val, y_val),
-    epochs=100,
-    batch_size=32,
-    callbacks=[checkpoint, early_stopping]
+    epochs=60,
+    callbacks=[checkpoint, early_stopping, reduce_lr]
 )
 
 # Avaliar no conjunto de teste
@@ -112,10 +119,9 @@ loss, accuracy = modelo.evaluate(X_teste, y_teste, verbose=1)
 print(f"Perda no teste: {loss:.4f}")
 print(f"Acurácia no teste: {accuracy:.4f}")
 
-np.save("models/labels.npy", np.argmax(y_treino, axis=1))  # Salva as labels convertidas de one-hot
+np.save("models/labels.npy", np.argmax(y_treino, axis=1))
 print("Arquivo labels.npy salvo com sucesso!")
 
 # Salvar modelo final
 modelo.save("models/modelo_libras.h5")
 print("Modelo salvo na pasta 'models'!")
-

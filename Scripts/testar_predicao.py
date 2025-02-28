@@ -13,7 +13,7 @@ dataset_path = "DataSet/Turismo/"
 categorias = sorted(os.listdir(dataset_path))  # Pegamos as pastas com os nomes dos pontos turísticos
 
 # Escolher uma imagem de teste
-caminho_teste = os.path.join(dataset_path, categorias[0], "frame_1.png")  # Altere para uma imagem real
+caminho_teste = os.path.join(dataset_path, categorias[0], "frame_21.png")  # Altere para uma imagem real
 
 # Função para processar a imagem antes da predição
 def preprocessar_imagem(caminho_imagem, tamanho=(128, 128)):
