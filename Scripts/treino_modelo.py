@@ -7,8 +7,10 @@ import matplotlib.pyplot as plt
 from tensorflow import keras
 from tensorflow.keras.callbacks import ReduceLROnPlateau
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from sklearn.model_selection import train_test_split
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from utils.preprocess import carregar_imagens, dividir_dataset
+from utils.preprocess import carregar_imagens
 
 # Definições de camadas da CNN
 Sequential = keras.models.Sequential
@@ -25,11 +27,12 @@ EarlyStopping = tf.keras.callbacks.EarlyStopping
 # Criar objeto de Data Augmentation com ajustes aprimorados
 data_augmentation = ImageDataGenerator(
     rotation_range=40,
-    width_shift_range=0.2,
-    height_shift_range=0.2,
-    shear_range=0.2,
-    zoom_range=0.2,
+    width_shift_range=0.3,
+    height_shift_range=0.3,
+    shear_range=0.3,
+    zoom_range=0.3,
     horizontal_flip=True,
+    brightness_range=[0.8, 1.2],
     fill_mode="nearest"
 )
 
@@ -60,8 +63,12 @@ with open("mapeamento_classes.json", "r") as f:
     mapeamento = json.load(f)
 print("Mapeamento de Classes:", mapeamento)
 
-# Dividir dataset
-X_treino, X_val, X_teste, y_treino, y_val, y_teste = dividir_dataset(imagens, labels)
+# Dividir dataset em treino (70%), validação (15%) e teste (15%)
+X_treino, X_temp, y_treino, y_temp = train_test_split(imagens, labels, test_size=0.3, stratify=labels, random_state=42)
+X_val, X_teste, y_val, y_teste = train_test_split(X_temp, y_temp, test_size=0.5, stratify=y_temp, random_state=42)
+
+print(f"Total de imagens: {len(imagens)}")
+print(f"Treino: {len(X_treino)} | Validação: {len(X_val)} | Teste: {len(X_teste)}")
 
 # Criar modelo CNN otimizado com Transfer Learning
 def criar_modelo(input_shape, num_classes):
