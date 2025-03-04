@@ -3,42 +3,33 @@ import os
 import json
 import numpy as np
 import tensorflow as tf
-import matplotlib.pyplot as plt
 from tensorflow import keras
-from tensorflow.keras.callbacks import ReduceLROnPlateau
+from tensorflow.keras.callbacks import ReduceLROnPlateau, ModelCheckpoint, EarlyStopping
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from sklearn.model_selection import train_test_split
+from sklearn.utils import class_weight
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
+from collections import Counter
 
+# Adicionar o caminho do projeto ao sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Importar função de pré-processamento
 from utils.preprocess import carregar_imagens
 
-# Definições de camadas da CNN
-Sequential = keras.models.Sequential
-MaxPooling2D = tf.keras.layers.MaxPooling2D
-Dense = tf.keras.layers.Dense
-Conv2D = tf.keras.layers.Conv2D
-Flatten = tf.keras.layers.Flatten
-Dropout = tf.keras.layers.Dropout
-BatchNormalization = tf.keras.layers.BatchNormalization
-to_categorical = tf.keras.utils.to_categorical
-ModelCheckpoint = tf.keras.callbacks.ModelCheckpoint
-EarlyStopping = tf.keras.callbacks.EarlyStopping
-
-# Criar objeto de Data Augmentation com ajustes aprimorados
-data_augmentation = ImageDataGenerator(
-    rotation_range=40,
-    width_shift_range=0.3,
-    height_shift_range=0.3,
-    shear_range=0.3,
-    zoom_range=0.3,
-    horizontal_flip=True,
-    brightness_range=[0.8, 1.2],
-    fill_mode="nearest"
-)
-
-# Diretório do dataset
+# Configurações
 diretorio_dataset = "DataSet/Turismo/"
-imagens, labels = carregar_imagens(diretorio_dataset)
+tamanho_imagem = (224, 224)
+batch_size = 32
+epochs = 50
+
+# Carregar imagens e labels
+imagens, labels = carregar_imagens(diretorio_dataset, tamanho_imagem)
+
+# Verificar balanceamento das classes
+print("Distribuição das classes:", Counter(labels))
 
 # Normalizar pixels (0 a 1)
 imagens = imagens.astype('float32') / 255.0
@@ -47,88 +38,83 @@ imagens = imagens.astype('float32') / 255.0
 unique_labels = sorted(set(labels))
 label_dict = {label: idx for idx, label in enumerate(unique_labels)}
 labels = np.array([label_dict[label] for label in labels]).astype(np.int32)
-labels = to_categorical(labels, num_classes=len(unique_labels))
+labels = tf.keras.utils.to_categorical(labels, num_classes=len(unique_labels))
 
-# Criar o dicionário de mapeamento de classes
-mapeamento_classes = {idx: label for idx, label in enumerate(unique_labels)}
-
-# Salvar o mapeamento em um arquivo JSON
-with open("mapeamento_classes.json", "w") as f:
-    json.dump(mapeamento_classes, f)
-
-print("Mapeamento de classes salvo em 'mapeamento_classes.json'")
-
-# Verificar o mapeamento das classes
-with open("mapeamento_classes.json", "r") as f:
-    mapeamento = json.load(f)
-print("Mapeamento de Classes:", mapeamento)
+# Salvar mapeamento de classes
+os.makedirs("Models", exist_ok=True)
+with open("Models/mapeamento_classes.json", "w") as f:
+    json.dump({str(idx): label for idx, label in enumerate(unique_labels)}, f)
 
 # Dividir dataset em treino (70%), validação (15%) e teste (15%)
 X_treino, X_temp, y_treino, y_temp = train_test_split(imagens, labels, test_size=0.3, stratify=labels, random_state=42)
 X_val, X_teste, y_val, y_teste = train_test_split(X_temp, y_temp, test_size=0.5, stratify=y_temp, random_state=42)
 
-print(f"Total de imagens: {len(imagens)}")
-print(f"Treino: {len(X_treino)} | Validação: {len(X_val)} | Teste: {len(X_teste)}")
+# Data Augmentation
+datagen = ImageDataGenerator(
+    rotation_range=40,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    brightness_range=[0.8, 1.2],
+    fill_mode="nearest"
+)
 
-# Criar modelo CNN otimizado com Transfer Learning
+# Criar modelo com EfficientNet
 def criar_modelo(input_shape, num_classes):
-    base_model = tf.keras.applications.VGG16(weights='imagenet', include_top=False, input_shape=input_shape)
-    base_model.trainable = False  # Congelar os pesos do modelo base
+    base_model = tf.keras.applications.EfficientNetB0(weights='imagenet', include_top=False, input_shape=input_shape)
+    base_model.trainable = False
     
-    modelo = Sequential([
+    modelo = keras.Sequential([
         base_model,
-        Flatten(),
-        Dense(512, activation='relu'),
-        Dropout(0.5),
-        Dense(num_classes, activation='softmax')
+        keras.layers.GlobalAveragePooling2D(),
+        keras.layers.Dense(512, activation='relu'),
+        keras.layers.Dropout(0.5),
+        keras.layers.Dense(num_classes, activation='softmax')
     ])
     
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)  # Aprimorando taxa de aprendizado
-    modelo.compile(optimizer=optimizer, loss="categorical_crossentropy", metrics=["accuracy"])
-    
+    modelo.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+                  loss="categorical_crossentropy",
+                  metrics=["accuracy"])
     return modelo
 
 modelo = criar_modelo(X_treino.shape[1:], len(unique_labels))
 
-# Callbacks para salvar o melhor modelo e interromper cedo
-checkpoint = ModelCheckpoint(
-    "Models/melhor_modelo_libras.h5",
-    monitor="val_accuracy",
-    save_best_only=True,
-    verbose=1
-)
+# Callbacks
+checkpoint = ModelCheckpoint("Models/melhor_modelo_libras.h5", monitor="val_accuracy", save_best_only=True, verbose=1)
+reduce_lr = ReduceLROnPlateau(monitor="val_loss", factor=0.5, patience=3, min_lr=1e-6, verbose=1)
+early_stopping = EarlyStopping(monitor="val_loss", patience=5, restore_best_weights=True, verbose=1)
 
-reduce_lr = ReduceLROnPlateau(
-    monitor="val_loss",
-    factor=0.5,
-    patience=3,
-    min_lr=1e-6,
-    verbose=1
-)
+# Balanceamento de classes
+class_weights = class_weight.compute_class_weight('balanced', classes=np.unique(np.argmax(y_treino, axis=1)), y=np.argmax(y_treino, axis=1))
+class_weights = dict(enumerate(class_weights))
 
-early_stopping = EarlyStopping(
-    monitor="val_loss",
-    patience=5,
-    verbose=1,
-    restore_best_weights=True
-)
-
-# Treinar o modelo usando data augmentation
-modelo.fit(
-    data_augmentation.flow(X_treino, y_treino, batch_size=32),
+# Treinamento
+historico = modelo.fit(
+    datagen.flow(X_treino, y_treino, batch_size=batch_size),
     validation_data=(X_val, y_val),
-    epochs=60,
-    callbacks=[checkpoint, early_stopping, reduce_lr]
+    epochs=epochs,
+    callbacks=[checkpoint, reduce_lr, early_stopping],
+    class_weight=class_weights
 )
 
-# Avaliar no conjunto de teste
+# Avaliação
 loss, accuracy = modelo.evaluate(X_teste, y_teste, verbose=1)
-print(f"Perda no teste: {loss:.4f}")
 print(f"Acurácia no teste: {accuracy:.4f}")
 
-np.save("models/labels.npy", np.argmax(y_treino, axis=1))
-print("Arquivo labels.npy salvo com sucesso!")
+# Matriz de Confusão
+y_pred = modelo.predict(X_teste)
+y_pred_classes = np.argmax(y_pred, axis=1)
+y_true_classes = np.argmax(y_teste, axis=1)
 
-# Salvar modelo final
-modelo.save("models/modelo_libras.h5")
-print("Modelo salvo na pasta 'models'!")
+cm = confusion_matrix(y_true_classes, y_pred_classes)
+plt.figure(figsize=(10, 8))
+sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=unique_labels, yticklabels=unique_labels)
+plt.xlabel("Predito")
+plt.ylabel("Verdadeiro")
+plt.show()
+
+# Salvar modelo
+modelo.save("Models/modelo_libras.h5")
+print("Modelo salvo na pasta 'Models'!")
