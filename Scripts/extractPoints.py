@@ -9,7 +9,7 @@ mp_drawing = mp.solutions.drawing_utils
 hands = mp_hands.Hands(static_image_mode=True, max_num_hands=1, min_detection_confidence=0.5)
 
 # Diretório contendo as imagens organizadas nas 12 pastas
-DATASET_PATH = "DATASET/Turismo/"  # <-- Substitua pelo caminho correto
+DATASET_PATH = "DATASET/Bairros/"  # <-- Substitua pelo caminho correto
 
 # Lista para armazenar os dados extraídos
 dataset = []
