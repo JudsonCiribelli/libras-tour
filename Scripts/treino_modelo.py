@@ -7,7 +7,7 @@ from sklearn.metrics import accuracy_score, classification_report
 import joblib
 
 # Carregar os dados extraídos
-df = pd.read_csv("Points/pontos_maos.csv")
+df = pd.read_csv("Points/pontos_maos_bairros.csv")
 
 # Separar features (X) e labels (y)
 X = df.drop(columns=["label"]).values  # Pegamos apenas os pontos das mãos
@@ -40,8 +40,8 @@ print("\nRelatório de Classificação - KNN:\n", classification_report(y_test, 
 
 # Salvar o melhor modelo
 if accuracy_svm > accuracy_knn:
-    joblib.dump(svm_model, "modelo_girias.pkl")
-    print("Modelo SVM salvo como 'modelo_girias.pkl'")
+    joblib.dump(svm_model, "modelo_bairros.pkl")
+    print("Modelo SVM salvo como 'modelo_bairros.pkl'")
 else:
-    joblib.dump(knn_model, "modelo_girias.pkl")
-    print("Modelo KNN salvo como 'modelo_girias.pkl'")
+    joblib.dump(knn_model, "modelo_bairros.pkl")
+    print("Modelo KNN salvo como 'modelo_bairros.pkl'")
