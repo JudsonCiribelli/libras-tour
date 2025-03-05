@@ -8,6 +8,13 @@ def iniciar_turismo():
         subprocess.Popen(["python", "Scripts/captura_tempo_real.py"])
     except Exception as e:
         messagebox.showerror("Erro", f"Não foi possível iniciar a detecção: {str(e)}")
+        
+def iniciar_girias():
+    try:
+        subprocess.Popen(["python", "Scripts/captura_tempo_real.py"])
+    except Exception as e:
+        messagebox.showerror("Erro", f"Não foi possível iniciar a detecção: {str(e)}")
+
 
 # Criar a janela principal
 root = tk.Tk()
