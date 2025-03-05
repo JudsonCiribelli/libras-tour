@@ -9,7 +9,7 @@ mp_drawing = mp.solutions.drawing_utils
 hands = mp_hands.Hands(static_image_mode=True, max_num_hands=1, min_detection_confidence=0.5)
 
 # Diretório contendo as imagens organizadas nas 12 pastas
-DATASET_PATH = "DATASET/Bairros/"  # <-- Substitua pelo caminho correto
+DATASET_PATH = "DATASET/Girias/"  # <-- Substitua pelo caminho correto
 
 # Lista para armazenar os dados extraídos
 dataset = []
@@ -47,6 +47,6 @@ for class_name in os.listdir(DATASET_PATH):
 df = pd.DataFrame(dataset, columns=["label"] + [f"x{i}" for i in range(21)] + [f"y{i}" for i in range(21)])
 
 # Salva os pontos extraídos em um CSV
-df.to_csv("pontos_maos_bairros.csv", index=False)
+df.to_csv("pontos_maos_girias.csv", index=False)
 
 print("Extração concluída! Dados salvos em pontos_maos.csv")
