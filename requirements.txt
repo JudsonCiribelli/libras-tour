@@ -9,4 +9,5 @@ mediapipe
 pillow
 flask
 flask-cors
+gunicorn
 joblib

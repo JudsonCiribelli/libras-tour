@@ -18,10 +18,10 @@ CORS(app)
 # 🔹 Carregar modelos treinados para cada categoria
 try:
     modelos = {
-        "turismo": joblib.load("Models/modelo_turismo.pkl"),
-        "bairros": joblib.load("Models/modelo_bairros.pkl"),
-        "girias": joblib.load("Models/modelo_girias.pkl"),
-    }
+    "turismo": joblib.load(os.path.join(os.getcwd(), "Models", "modelo_turismo.pkl")),
+    "bairros": joblib.load(os.path.join(os.getcwd(), "Models", "modelo_bairros.pkl")),
+    "girias": joblib.load(os.path.join(os.getcwd(), "Models", "modelo_girias.pkl")),
+}
     print("✅ Modelos carregados com sucesso!")
 except Exception as e:
     print("❌ Erro ao carregar modelos:", str(e))
@@ -97,5 +97,5 @@ def predict():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # 🔹 Ajuste para compatibilidade com Render
+    port = int(os.environ.get("PORT", 5000))  # Define uma porta padrão (10000) caso $PORT não esteja definida
     app.run(host="0.0.0.0", port=port, debug=True)
