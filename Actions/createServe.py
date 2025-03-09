@@ -7,6 +7,7 @@ from io import BytesIO
 from PIL import Image
 import joblib
 import traceback
+import os
 
 app = Flask(__name__)
 from flask_cors import CORS
@@ -27,10 +28,19 @@ except Exception as e:
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(static_image_mode=False, max_num_hands=2, min_detection_confidence=0.5)
 
+@app.route("/")
+def home():
+    return jsonify({"message": "API de Reconhecimento de Libras está rodando!"})
+
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
-        data = request.json
+        # 📌 Verificar se a requisição contém JSON válido
+        if not request.is_json:
+            return jsonify({"error": "Requisição deve ser JSON"}), 415
+        
+        data = request.get_json()
+
         if "image" not in data or "categoria" not in data:
             return jsonify({"error": "Imagem ou categoria não enviada"}), 400
 
@@ -46,13 +56,12 @@ def predict():
         print(f"📷 Tamanho da string base64 recebida: {len(data['image'])}")
 
         # Remover cabeçalho 'data:image/jpeg;base64,...' se existir
-        if "," in data["image"]:
-            data["image"] = data["image"].split(",")[1]
+        image_base64 = data["image"].split(",")[-1]
 
         # Decodificar imagem Base64
         try:
-            image_data = base64.b64decode(data["image"])
-            image = Image.open(BytesIO(image_data))
+            image_data = base64.b64decode(image_base64)
+            image = Image.open(BytesIO(image_data)).convert("RGB")
             frame = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
         except Exception as e:
             print("❌ Erro ao decodificar a imagem base64:", str(e))
@@ -86,4 +95,5 @@ def predict():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5000))  # 🔹 Ajuste para compatibilidade com Render
+    app.run(host="0.0.0.0", port=port, debug=True)
