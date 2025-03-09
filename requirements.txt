@@ -7,6 +7,6 @@ matplotlib
 h5py
 mediapipe
 pillow
-flask  # Opcional, caso precise de API
+flask
 flask-cors
 joblib

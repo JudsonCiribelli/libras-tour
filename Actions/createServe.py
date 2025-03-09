@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify
 import cv2
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import mediapipe as mp
 import numpy as np
 import base64
