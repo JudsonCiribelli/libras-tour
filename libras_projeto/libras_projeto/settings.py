@@ -18,14 +18,14 @@ DEBUG = True
 ALLOWED_HOSTS = [
 "127.0.0.1",
 "localhost",
-"dd04-2804-1b2-ab42-fcdb-3df1-c057-a5ae-645b.ngrok-free.app",
+"9efa-34-151-210-162.ngrok-free.app",
 "libras-tour-frontend-pywe.vercel.app",
 ]
 
 
 CORS_ALLOWED_ORIGINS = [
 "https://libras-tour-frontend-pywe.vercel.app", # Frontend Vercel
-"https://dd04-2804-1b2-ab42-fcdb-3df1-c057-a5ae-645b.ngrok-free.app", # API exposta via ngrok
+"https://9efa-34-151-210-162.ngrok-free.app", # API exposta via ngrok
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True # Permite qualquer domínio acessar a API
@@ -103,7 +103,7 @@ DATABASES = {
 
 CSRF_TRUSTED_ORIGINS = [
 "https://libras-tour-frontend-pywe.vercel.app",
-"https://dd04-2804-1b2-ab42-fcdb-3df1-c057-a5ae-645b.ngrok-free.app",
+"https://9efa-34-151-210-162.ngrok-free.app",
 ]
 
 REST_FRAMEWORK = {

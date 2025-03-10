@@ -11,3 +11,6 @@ flask
 flask-cors
 gunicorn
 joblib
+django
+djangorestframework
+django-cors-headers
