@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 import cv2
+from pyngrok import ngrok
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import mediapipe as mp
@@ -98,4 +99,7 @@ def predict():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))  # Define uma porta padrão (10000) caso $PORT não esteja definida
-    app.run(host="0.0.0.0", port=port, debug=True)
+    public_url = ngrok.connect(port).public_url
+    print(f"🔗 URL pública gerada pelo ngrok: {public_url}")
+
+    app.run(host="0.0.0.0", port=port, debug=True)# Define uma porta padrão (10000) caso $PORT não esteja definida
